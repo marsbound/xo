@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use std::{fmt, collections};
+use std::{fmt, collections, error};
 use dialoguer::Input;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -16,6 +16,23 @@ impl fmt::Display for Player {
             Player::AI => write!(f, "x"),
             Player::None(x) => write!(f, "{}", x),
         }
+    }
+}
+
+#[derive(Debug)]
+struct BoardPlacementError {
+    message: String
+}
+
+impl fmt::Display for BoardPlacementError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "BoardPlacementError: {}", self.message)
+    }
+}
+
+impl error::Error for BoardPlacementError {
+    fn description(&self) -> &str {
+        "Description for BoardPlacementError"
     }
 }
 
@@ -62,31 +79,42 @@ impl Board {
         Ok(())
     }
 
-    fn place_move_with_alias(&mut self, alias: u8, player: Player) -> Option<Player> {
+    fn place_move_with_alias(&mut self, alias: u8, player: Player) -> Result<Option<Player>, BoardPlacementError> {
         match self.position_alias.get(&alias) {
             Some(&(row, col)) => {
-                self.place_move(row, col, player)
+                match self.place_move(row, col, player) {
+                    Ok(player) => Ok(player),
+                    Err(e) => Err(e)
+                }
             },
-            _ => None
+            _ => {
+                Err(BoardPlacementError {
+                    message: String::from("Invalid position! Choose between 1 and 9.")
+                })
+            }
         }
     }
 
     // Credits to "Hardwareguy" for the algorithm
     // Source: https://stackoverflow.com/a/1056352
-    fn place_move(&mut self, x: usize, y: usize, player: Player) -> Option<Player> {
-        match self.positions[x][y] {
-            Player::None(_) => self.positions[x][y] = player,
-            _ => panic!("Invalid move: the spot on the board is already taken.")
+    fn place_move(&mut self, x: usize, y: usize, player: Player) -> Result<Option<Player>, BoardPlacementError> {
+        if let Player::None(_) = self.positions[x][y] {
+            self.positions[x][y] = player;
+        } else {
+            return Err(BoardPlacementError {
+                message: String::from("Invalid move! Position is already taken.")
+            });
         }
-        
+
         let n = 3;
+        
         // Check columns
         for i in 0..n {
             if self.positions[x][i] != player {
                 break;
             }
             if i == n-1 {
-                return Some(player)
+                return Ok(Some(player))
             }
         }
 
@@ -96,7 +124,7 @@ impl Board {
                 break;
             }
             if i == n-1 {
-                return Some(player)
+                return Ok(Some(player))
             }
         }
 
@@ -107,7 +135,7 @@ impl Board {
                     break;
                 }
                 if i == n-1 {
-                    return Some(player)
+                    return Ok(Some(player))
                 }
             }
         }
@@ -119,29 +147,36 @@ impl Board {
                     break;
                 }
                 if i == n-1 {
-                    return Some(player)
+                    return Ok(Some(player))
                 }
             }
         }
 
-        None
+        Ok(None)
     }
 }
 
-fn main() -> Result<(), io::Error> {
+fn main() -> Result<(), Box<dyn error::Error>> {
     let stdout = io::stdout();
     let mut board = Board::new();
     let mut outcome: Option<Player>;
 
-    println!("\nWelcome to XO");
     board.visualize(&stdout)?;
     for i in 0..9 {
         if i % 2 == 0 {
-            let choice = Input::<u8>::new().with_prompt("Your turn").interact()?;
-            outcome = board.place_move_with_alias(choice, Player::Human);
+            loop {
+                let choice = Input::<u8>::new().with_prompt("Your turn").interact()?;
+                match board.place_move_with_alias(choice, Player::Human) {
+                    Ok(player) => {
+                        outcome = player;
+                        break;
+                    },
+                    Err(e) => println!("{}", e)
+                }
+            }
         } else {
             let choice = Input::<u8>::new().with_prompt("AI's turn").interact()?;
-            outcome = board.place_move_with_alias(choice, Player::AI);
+            outcome = board.place_move_with_alias(choice, Player::AI)?;
         }
 
         match outcome {
