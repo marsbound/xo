@@ -8,11 +8,15 @@ CLI game of tic-tac-toe written in Rust.
     ```bash
     git clone --depth=1 https://github.com/marsbound/xo.git
     ```
-2. Run the setup command to remove current .git:
+2. Change into the cloned directory: 
+    ```bash
+    cd xo
+    ```
+3. Run the setup command to remove current .git:
     ```bash
     bash setup.sh
     ```
-3. Build and run the game:
+4. Build and run the game:
     ```bash
     cargo run
     ```
