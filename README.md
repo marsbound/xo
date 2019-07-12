@@ -1,8 +1,6 @@
 # XO
 CLI game of tic-tac-toe written in Rust.
 
-![alt gameplay](docs/xo.jpg)
-
 ## Installation
 1. Clone this repository:
     ```bash
