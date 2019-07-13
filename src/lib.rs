@@ -13,7 +13,7 @@ impl fmt::Display for BoardPlacementError {
 
 impl error::Error for BoardPlacementError {
     fn description(&self) -> &str {
-        "Description for BoardPlacementError"
+        &self.message
     }
 }
 
